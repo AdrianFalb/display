@@ -71,8 +71,10 @@ void updateTopBar(bool connected, DisplayScreens currentScreen) {
   /// Connection Status
   tft.setCursor(68, 10);
   if (connected) {
+    tft.setTextColor(ST77XX_GREEN);
     tft.print("OK");
   } else {
+    tft.setTextColor(ST77XX_MAGENTA);
     tft.print("NO");
   }
 
