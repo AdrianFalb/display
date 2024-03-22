@@ -49,13 +49,20 @@ void updateTopBar(bool connected, DisplayScreens currentScreen) {
   tft.setCursor(0, 2);
   tft.setTextSize(1);  
 
-  int numOfSatellites = 4; // tu by som bral hodnotu z nejakej get funkcie
-  int idealNumOfSatellites = 3;
-  if (numOfSatellites < idealNumOfSatellites) {
-    tft.setTextColor(ST77XX_MAGENTA);
+  uint16_t numOfSatellites = 8; // tu by som bral hodnotu z nejakej get funkcie
+  const uint8_t idealNumOfSatellites = 7;
+  const uint8_t useableNumOfSatellites = 5;
+
+  if (numOfSatellites < useableNumOfSatellites) {
+    tft.setTextColor(ST77XX_MAGENTA); // bieda
+
+  } else if (numOfSatellites < idealNumOfSatellites && numOfSatellites >= useableNumOfSatellites) {
+    tft.setTextColor(ST77XX_ORANGE); // take da sa
+
   } else {
-    tft.setTextColor(ST77XX_GREEN);
+    tft.setTextColor(ST77XX_GREEN); // dobre
   }
+
   tft.print("Satellites: ");
   tft.print(numOfSatellites);
 
@@ -69,7 +76,7 @@ void updateTopBar(bool connected, DisplayScreens currentScreen) {
   */
 
   /// Connection Status
-  tft.setCursor(68, 10);
+  tft.setCursor(72, 10);
   if (connected) {
     tft.setTextColor(ST77XX_GREEN);
     tft.print("OK");
