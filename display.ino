@@ -11,6 +11,10 @@
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 float p = 3.1415926;
+enum DisplayScreens {
+    NONE, ERROR_SCREEN };
+
+DisplayScreens currentDisplayScreen = NONE;
 
 void updateTopBar() {
   tft.setCursor(68, 2);
@@ -249,15 +253,20 @@ void drawMainScreenGps() {
   rectY = rectY + 20 + buttonHeight;
 }
 
-unsigned long updateDisplay(bool connected) {
+DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
   // Update values
   if (connected) {
     updateTopBar();
     updateMainScreenGpsValues();
+  } else if (currentScreen != ERROR_SCREEN) {
+    currentScreen = ERROR_SCREEN;
+    drawErrorScreen();
   }
 
   // Write logic for redrawing layout when button is pressed
   // ...
+
+  return currentScreen;
 }
 
 void initDisplay() {
@@ -269,20 +278,20 @@ void initDisplay() {
 
   drawTopBar();
   drawRightMenuBar();
-  drawMainScreenGps();  
+  drawMainScreenGps();
 }
 
 void setup(void) {
   //Serial.begin(9600);
   //Serial.print(F("Hello! ST77xx TFT Test"));
 
-  initDisplay();  
+  initDisplay();
 }
 
 void loop() {
   
   bool connected = false; // hodnotu by som bral z nejakej get funkcie
-  updateDisplay(connected);
+  currentDisplayScreen = updateDisplay(connected, currentDisplayScreen);
 }
 
 void testDisplay() {
