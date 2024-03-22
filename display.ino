@@ -43,8 +43,8 @@ void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t battery
   tft.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, BATTERY_BORDER_COLOR);
 }
 
-void updateTopBar(bool connected) {
-  // Satellites
+void updateTopBar(bool connected, DisplayScreens currentScreen) {
+  /// Satellites
   //tft.setCursor(68, 2);
   tft.setCursor(0, 2);
   tft.setTextSize(1);  
@@ -68,7 +68,7 @@ void updateTopBar(bool connected) {
   tft.print("%");
   */
 
-  // Connection Status
+  /// Connection Status
   tft.setCursor(68, 10);
   if (connected) {
     tft.print("OK");
@@ -76,9 +76,33 @@ void updateTopBar(bool connected) {
     tft.print("NO");
   }
 
-  // Draw battery icons
+  /// Draw battery icons
   drawBattery(20, 8, 2, tft.width() - 24, 2, 13); // Boat Battery
-  drawBattery(20, 8, 2, tft.width() - 24, 10, 29); // Joystick Battery  
+  drawBattery(20, 8, 2, tft.width() - 24, 10, 29); // Joystick Battery
+
+  /// Current Screen
+  switch (currentScreen) {
+    case GPS_SCREEN:
+      tft.setCursor(100, 2);
+      tft.setTextSize(1);
+      tft.setTextColor(ST77XX_WHITE);
+      tft.print("GPS Menu");
+      break;
+
+    case SONAR_SCREEN:
+      tft.setCursor(100, 2);
+      tft.setTextSize(1);
+      tft.setTextColor(ST77XX_WHITE);
+      tft.print("SONAR Menu");
+      break;
+
+    default:
+      tft.setCursor(100, 2);
+      tft.setTextSize(1);
+      tft.setTextColor(ST77XX_WHITE);
+      tft.print("No screen selected");
+      break;
+  } 
 
   // Joystick battery
   /*
@@ -308,9 +332,13 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
 
   /// Update values
   if (connected) {
-    updateTopBar(connected);
-    updateMainScreenGpsValues();
-  } else if (currentScreen != ERROR_SCREEN) {
+    updateTopBar(connected, currentScreen);
+    
+    if (currentScreen == GPS_SCREEN) {
+      updateMainScreenGpsValues();
+    }
+
+  } else if (!connected && currentScreen != ERROR_SCREEN) {
     currentScreen = ERROR_SCREEN;
     drawErrorScreen();
   }
@@ -330,8 +358,20 @@ void initDisplay(DisplayScreens defaultScreen) {
   drawTopBar();
   drawRightMenuBar();
 
-  if (defaultScreen = GPS_SCREEN) {
-    drawMainScreenGps();
+  switch(defaultScreen) {
+    case GPS_SCREEN:
+      drawMainScreenGps();
+      currentDisplayScreen = GPS_SCREEN;
+      break;
+
+    case SONAR_SCREEN:
+      // drawMainScreenSonar();
+      currentDisplayScreen = SONAR_SCREEN;
+      break;
+
+    default:
+      currentDisplayScreen = NONE;
+      break;
   }
 }
 
@@ -339,7 +379,7 @@ void setup(void) {
   //Serial.begin(9600);
   //Serial.print(F("Hello! ST77xx TFT Test"));
 
-  initDisplay(0);
+  initDisplay(GPS_SCREEN);
 }
 
 void loop() {  
