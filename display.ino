@@ -12,32 +12,45 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RS
 
 float p = 3.1415926;
 enum DisplayScreens {
-    NONE, ERROR_SCREEN };
+    NONE = 0,
+    ERROR_SCREEN = -1,
+    GPS_SCREEN = 1
+};
 
 DisplayScreens currentDisplayScreen = NONE;
 
-void updateTopBar() {
-  tft.setCursor(68, 2);
-  tft.setTextColor(ST77XX_WHITE); 
-  tft.setTextSize(1);
+void updateTopBar(bool connected) {
+  // Satellites
+  //tft.setCursor(68, 2);
+  tft.setCursor(0, 2);
+  tft.setTextSize(1);  
 
-  int numOfSatellites = 3; // tu by som bral hodnotu z nejakej get funkcie
+  int numOfSatellites = 4; // tu by som bral hodnotu z nejakej get funkcie
+  int idealNumOfSatellites = 3;
+  if (numOfSatellites < idealNumOfSatellites) {
+    tft.setTextColor(ST77XX_MAGENTA);
+  } else {
+    tft.setTextColor(ST77XX_GREEN);
+  }
+  tft.print("Satellites: ");
   tft.print(numOfSatellites);
 
+  // Boat battery
   tft.setCursor(tft.width() - 24, 2);
+  tft.setTextColor(ST77XX_WHITE);
   int boatBattery = 50; // tu by som bral hodnotu z nejakej get funkcie
   tft.print(boatBattery);
   tft.print("%");
 
+  // Connection Status
   tft.setCursor(68, 10);
-
-  bool connected = true; // tu by som bral hodnotu z nejakej get funkcie
   if (connected) {
     tft.print("OK");
   } else {
     tft.print("NO");
   }
 
+  // Joystick battery
   tft.setCursor(tft.width() - 24, 10);
   int joystickBattery = 100; // tu by som bral hodnotu z nejakej get funkcie
   tft.print(joystickBattery);
@@ -56,9 +69,11 @@ void drawTopBar() {
   tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
 
   // Satellites
+  /*
   tft.setCursor(0, 2);
   tft.setTextColor(ST77XX_WHITE);  tft.setTextSize(1);
   tft.print("Satellites: ");
+  */
 
   // Boat Battery
   tft.setCursor(tft.width() - 56, 2);
@@ -256,7 +271,7 @@ void drawMainScreenGps() {
 DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
   // Update values
   if (connected) {
-    updateTopBar();
+    updateTopBar(connected);
     updateMainScreenGpsValues();
   } else if (currentScreen != ERROR_SCREEN) {
     currentScreen = ERROR_SCREEN;
@@ -269,7 +284,7 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
   return currentScreen;
 }
 
-void initDisplay() {
+void initDisplay(DisplayScreens defaultScreen) {
   // Use this initializer (uncomment) if using a 2.0" ST7789 320x240 TFT:
   tft.init(240, 320);
   tft.setRotation(1); // aby bola 0,0 v lavom hornom rohu
@@ -278,19 +293,21 @@ void initDisplay() {
 
   drawTopBar();
   drawRightMenuBar();
-  drawMainScreenGps();
+
+  if (defaultScreen = GPS_SCREEN) {
+    drawMainScreenGps();
+  }
 }
 
 void setup(void) {
   //Serial.begin(9600);
   //Serial.print(F("Hello! ST77xx TFT Test"));
 
-  initDisplay();
+  initDisplay(0);
 }
 
-void loop() {
-  
-  bool connected = false; // hodnotu by som bral z nejakej get funkcie
+void loop() {  
+  bool connected = true; // hodnotu by som bral z nejakej get funkcie
   currentDisplayScreen = updateDisplay(connected, currentDisplayScreen);
 }
 
