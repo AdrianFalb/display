@@ -1,5 +1,5 @@
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
 #include <SPI.h>
 
 #define TFT_CS        10
@@ -8,14 +8,8 @@
 #define TFT_MOSI      11
 #define TFT_SCLK      13
 
-// Battery colors
-#define BATTERY_BODY_COLOR   ST77XX_WHITE
-#define BATTERY_FILL_COLOR   ST77XX_GREEN
-#define BATTERY_BORDER_COLOR ST77XX_BLACK
-
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
-float p = 3.1415926;
 enum DisplayScreens {
     NONE = 0,
     ERROR_SCREEN = -1,
@@ -26,9 +20,15 @@ enum DisplayScreens {
 DisplayScreens currentDisplayScreen = NONE;
 
 void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t batteryMargin, uint16_t batteryX, uint16_t batteryY, uint8_t batteryCharge) {
-  // Draw battery body
+  /// Battery colors
+  const uint16_t BATTERY_BODY_COLOR = ST77XX_WHITE;
+  const uint16_t BATTERY_FILL_COLOR = ST77XX_GREEN;
+  const uint16_t BATTERY_BORDER_COLOR = ST77XX_BLACK;
+
+  /// Draw battery body
   tft.fillRect(batteryX, batteryY, batteryWidth, batteryHeight, BATTERY_BODY_COLOR);
-  // Draw battery fill level
+
+  /// Draw battery fill level
   int fillWidth = map(batteryCharge, 0, 100, 0, batteryWidth - 2 * batteryMargin);
 
   if (batteryCharge >= 50) {
@@ -39,7 +39,7 @@ void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t battery
     tft.fillRect(batteryX + batteryMargin, batteryY + batteryMargin, fillWidth, batteryHeight - 2 * batteryMargin, ST77XX_RED);
   }
 
-  // Draw battery border
+  /// Draw battery border
   tft.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, BATTERY_BORDER_COLOR);
 }
 
