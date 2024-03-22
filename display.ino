@@ -8,6 +8,11 @@
 #define TFT_MOSI      11
 #define TFT_SCLK      13
 
+// Battery colors
+#define BATTERY_BODY_COLOR   ST77XX_WHITE
+#define BATTERY_FILL_COLOR   ST77XX_GREEN
+#define BATTERY_BORDER_COLOR ST77XX_BLACK
+
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 float p = 3.1415926;
@@ -18,6 +23,24 @@ enum DisplayScreens {
 };
 
 DisplayScreens currentDisplayScreen = NONE;
+
+void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t batteryMargin, uint16_t batteryX, uint16_t batteryY, uint8_t batteryCharge) {
+  // Draw battery body
+  tft.fillRect(batteryX, batteryY, batteryWidth, batteryHeight, BATTERY_BODY_COLOR);
+  // Draw battery fill level
+  int fillWidth = map(batteryCharge, 0, 100, 0, batteryWidth - 2 * batteryMargin);
+
+  if (batteryCharge >= 50) {
+    tft.fillRect(batteryX + batteryMargin, batteryY + batteryMargin, fillWidth, batteryHeight - 2 * batteryMargin, ST77XX_GREEN);
+  } else if (batteryCharge >= 25) {
+    tft.fillRect(batteryX + batteryMargin, batteryY + batteryMargin, fillWidth, batteryHeight - 2 * batteryMargin, ST77XX_ORANGE);
+  } else if (batteryCharge >= 10) {
+    tft.fillRect(batteryX + batteryMargin, batteryY + batteryMargin, fillWidth, batteryHeight - 2 * batteryMargin, ST77XX_RED);
+  }
+
+  // Draw battery border
+  tft.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, BATTERY_BORDER_COLOR);
+}
 
 void updateTopBar(bool connected) {
   // Satellites
@@ -36,11 +59,13 @@ void updateTopBar(bool connected) {
   tft.print(numOfSatellites);
 
   // Boat battery
+  /*
   tft.setCursor(tft.width() - 24, 2);
   tft.setTextColor(ST77XX_WHITE);
   int boatBattery = 50; // tu by som bral hodnotu z nejakej get funkcie
   tft.print(boatBattery);
   tft.print("%");
+  */
 
   // Connection Status
   tft.setCursor(68, 10);
@@ -50,11 +75,17 @@ void updateTopBar(bool connected) {
     tft.print("NO");
   }
 
+  // Draw battery icons
+  drawBattery(20, 8, 2, tft.width() - 24, 2, 13); // Boat Battery
+  drawBattery(20, 8, 2, tft.width() - 24, 10, 29); // Joystick Battery  
+
   // Joystick battery
+  /*
   tft.setCursor(tft.width() - 24, 10);
   int joystickBattery = 100; // tu by som bral hodnotu z nejakej get funkcie
   tft.print(joystickBattery);
   tft.print("%");
+  */
 }
 
 void drawTopBar() {
@@ -66,7 +97,7 @@ void drawTopBar() {
   int rectY = 0;
   int rectWidth = tft.width();
   int rectHeight = 20; // Adjust the height of the rectangle as needed
-  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);  
 
   // Satellites
   /*
