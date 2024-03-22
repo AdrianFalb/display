@@ -120,6 +120,29 @@ void drawMainScreenBackground() {
   tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
 }
 
+void drawErrorScreen() {
+  // Main screen
+  int rectX = 0;
+  int rectY = 0;
+  int rectWidth = tft.width();
+  int rectHeight = tft.height();
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
+  tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
+
+  tft.fillRect(rectX + 20, rectY + 20, rectWidth - 40, rectHeight - 40, ST77XX_BLACK);
+  tft.drawRect(rectX + 20, rectY + 20, rectWidth - 40, rectHeight - 40, ST77XX_RED);
+
+  rectX = rectX + 20;
+  rectY = rectY + 20;
+
+  tft.setCursor(rectX + 90, rectY + 60);
+  tft.setTextColor(ST77XX_RED);
+  tft.setTextSize(3);
+  tft.print("ERROR!");
+  tft.setCursor(rectX + 16, rectY + 20 + 80);
+  tft.print("NO CONNECTION!");
+}
+
 void updateMainScreenGpsValues() {
   const int CURSOR_NEW_LINE = 10;
 
@@ -226,10 +249,12 @@ void drawMainScreenGps() {
   rectY = rectY + 20 + buttonHeight;
 }
 
-unsigned long updateDisplay() {
+unsigned long updateDisplay(bool connected) {
   // Update values
-  updateTopBar();
-  updateMainScreenGpsValues();
+  if (connected) {
+    updateTopBar();
+    updateMainScreenGpsValues();
+  }
 
   // Write logic for redrawing layout when button is pressed
   // ...
@@ -240,11 +265,11 @@ void initDisplay() {
   tft.init(240, 320);
   tft.setRotation(1); // aby bola 0,0 v lavom hornom rohu
   tft.invertDisplay(false); // for some reason the default of the display is to be inverted...
-  tft.fillScreen(ST77XX_BLACK);
+  tft.fillScreen(ST77XX_BLACK);  
 
   drawTopBar();
   drawRightMenuBar();
-  drawMainScreenGps();
+  drawMainScreenGps();  
 }
 
 void setup(void) {
@@ -255,7 +280,9 @@ void setup(void) {
 }
 
 void loop() {
-  updateDisplay();
+  
+  bool connected = false; // hodnotu by som bral z nejakej get funkcie
+  updateDisplay(connected);
 }
 
 void testDisplay() {
