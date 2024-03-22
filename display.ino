@@ -172,23 +172,27 @@ void drawMainScreenBackground() {
 }
 
 void drawErrorScreen() {
-  // Main screen
   int rectX = 0;
   int rectY = 0;
   int rectWidth = tft.width();
   int rectHeight = tft.height();
+  
+  /// Fill background
   tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
   tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
 
+  /// Draw inner rectangle
   tft.fillRect(rectX + 20, rectY + 20, rectWidth - 40, rectHeight - 40, ST77XX_BLACK);
   tft.drawRect(rectX + 20, rectY + 20, rectWidth - 40, rectHeight - 40, ST77XX_RED);
 
   rectX = rectX + 20;
   rectY = rectY + 20;
 
-  tft.setCursor(rectX + 90, rectY + 60);
+  /// Display error message
   tft.setTextColor(ST77XX_RED);
   tft.setTextSize(3);
+
+  tft.setCursor(rectX + 90, rectY + 60);  
   tft.print("ERROR!");
   tft.setCursor(rectX + 16, rectY + 20 + 80);
   tft.print("NO CONNECTION!");
@@ -263,36 +267,36 @@ void drawMainScreenGps() {
   drawMainScreenBackground();
   
   const int CURSOR_NEW_LINE = 10;
-
-  // Menu bar
   int rectX = 20;
   int rectY = 20;
   int rectWidth = tft.width(); - 80;
   int rectHeight = tft.height();
 
-  // Buttons with text
   int buttonWidth  = 180;
   int buttonHeight = 30;
 
-  // Menu button
+  /// GPS Position 1
   tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 1");
   rectY = rectY + 20 + buttonHeight;
 
+  /// GPS Position 2
   tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 2");
   rectY = rectY + 20 + buttonHeight;
 
+  /// GPS Position 3
   tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 3");
   rectY = rectY + 20 + buttonHeight;
 
+  /// GPS Position 4
   tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
@@ -301,7 +305,8 @@ void drawMainScreenGps() {
 }
 
 DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
-  // Update values
+
+  /// Update values
   if (connected) {
     updateTopBar(connected);
     updateMainScreenGpsValues();
@@ -317,10 +322,9 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
 }
 
 void initDisplay(DisplayScreens defaultScreen) {
-  // Use this initializer (uncomment) if using a 2.0" ST7789 320x240 TFT:
   tft.init(240, 320);
-  tft.setRotation(1); // aby bola 0,0 v lavom hornom rohu
-  tft.invertDisplay(false); // for some reason the default of the display is to be inverted...
+  tft.setRotation(1); /// To ensure that 0, 0 is in the top left corner...
+  tft.invertDisplay(false); /// for some reason the default of the display is to be inverted...
   tft.fillScreen(ST77XX_BLACK);  
 
   drawTopBar();
