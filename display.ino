@@ -22,29 +22,37 @@ enum DisplayScreens {
     SONAR_SCREEN = 2
 };
 
-struct GpsSelection {
+struct DisplayGpsSelection {
   uint8_t position;
   uint8_t nextPos;
   uint16_t rectX;
   uint16_t rectY;
 };
 
+struct DisplayState {
+  DisplayScreens currentScreen;
+  bool menuButtonPressed;
+  bool selectButtonPressed;
+  bool confirmButtonPressed;
+  bool homeButtonPressed;
+};
+
 const uint8_t buttonWidth  = 180;
 const uint8_t buttonHeight = 30;
 
-DisplayScreens currentDisplayScreen = NONE;
-GpsSelection currentGpsSelection = {1, 2, 30, 40};
+DisplayGpsSelection currentGpsSelection = {1, 2, 30, 40};
+DisplayState displayState = {NONE, false, false, false, false};
 
 void setup(void) {
   Serial.begin(9600);
   Serial.print(F("Hello! ST77xx TFT Test"));
 
-  initDisplay(GPS_SCREEN);  
+  initDisplay(GPS_SCREEN);
 }
 
 void loop() {  
   bool connected = true; // hodnotu by som bral z nejakej get funkcie
-  currentDisplayScreen = updateDisplay(connected, currentDisplayScreen);
+  displayState = updateDisplay(connected, displayState);
 }
 
 void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t batteryMargin, uint16_t batteryX, uint16_t batteryY, uint8_t batteryCharge) {
@@ -267,7 +275,7 @@ void drawErrorScreen() {
   tft.print("NO CONNECTION!");
 }
 
-GpsSelection selectMainScreenGps(GpsSelection selectionState) {
+DisplayGpsSelection selectMainScreenGps(DisplayGpsSelection selectionState) {
 
   uint8_t rectX = selectionState.rectX;
   uint8_t rectY = selectionState.rectY;
@@ -402,35 +410,39 @@ void drawMainScreenGps() {
   rectY = rectY + 20 + buttonHeight;
 }
 
-DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
+DisplayState updateDisplay(bool connected, DisplayState state) {
 
-  DisplayScreens screen = currentScreen;
+  DisplayScreens screen = state.currentScreen;
 
-  // Write logic for redrawing layout when button is pressed
-  // ...
+  /// Screen switching logic with buttons ================
   uint8_t menuButtonState = digitalRead(DISPLAY_BUTTON_MENU);
   uint8_t GpsSelectionState = digitalRead(DISPLAY_BUTTON_SELECT);
   uint8_t confirmButtonState = digitalRead(DISPLAY_BUTTON_CONFIRM);
   uint8_t homeButtonState = digitalRead(DISPLAY_BUTTON_HOME);
 
-  if (menuButtonState == LOW) {
+  if (menuButtonState == LOW && !state.menuButtonPressed) {
+    if (state.currentScreen == GPS_SCREEN) {
+      state.currentScreen = SONAR_SCREEN;
+      drawMainScreenSonar();
 
-    if (currentScreen == GPS_SCREEN) {
-      currentScreen = SONAR_SCREEN;
-      drawMainScreenSonar();      
-
-    } else if (currentScreen == SONAR_SCREEN) {
-      currentScreen = GPS_SCREEN;
+    } else if (state.currentScreen == SONAR_SCREEN) {
+      state.currentScreen = GPS_SCREEN;
       drawMainScreenGps();
 
-      currentGpsSelection = selectMainScreenGps(currentGpsSelection);    
-      currentGpsSelection.position = 0;
+      currentGpsSelection = selectMainScreenGps(currentGpsSelection);
+      currentGpsSelection.position = 1;
+      currentGpsSelection.nextPos = 2;
       currentGpsSelection.rectX = 30;
       currentGpsSelection.rectY = 40;
     }
-  }
 
-  if (GpsSelectionState == LOW && currentScreen == GPS_SCREEN) {
+    state.menuButtonPressed = true;
+  
+  } else if (menuButtonState == HIGH) {    
+    state.menuButtonPressed = false;
+  } 
+
+  if (GpsSelectionState == LOW && state.currentScreen == GPS_SCREEN) {
     
     switch(currentGpsSelection.nextPos) {
       case 1:        
@@ -458,36 +470,45 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
         currentGpsSelection = selectMainScreenGps(currentGpsSelection);
         currentGpsSelection.nextPos = 1;
         break;
-    }    
+    }
   }
 
-  if (confirmButtonState == LOW && currentScreen == GPS_SCREEN) {
+  if (confirmButtonState == LOW && state.currentScreen == GPS_SCREEN && !state.confirmButtonPressed) {
     tft.drawRect(currentGpsSelection.rectX, currentGpsSelection.rectY, buttonWidth, buttonHeight, ST77XX_GREEN);
     Serial.print("Chosen position: "); Serial.println(currentGpsSelection.position);
+
+    state.confirmButtonPressed = true;
+
+  } else if (confirmButtonState == HIGH) {
+    state.confirmButtonPressed = false;
   }
 
-  if (homeButtonState == LOW) {
+  if (homeButtonState == LOW && !state.homeButtonPressed) {
     Serial.println("Going home!");
+    state.homeButtonPressed = true;
+
+  } else if (homeButtonState == HIGH) {
+    state.homeButtonPressed = false;
   }
 
-  /// Update values
+  /// Update values ================
   if (connected) {
 
-    if (screen != currentScreen)
+    if (screen != state.currentScreen)
       updateTopBarBackground();
 
-    updateTopBar(connected, currentScreen);
+    updateTopBar(connected, state.currentScreen);
     
-    if (currentScreen == GPS_SCREEN) {
+    if (state.currentScreen == GPS_SCREEN) {
       updateMainScreenGpsValues();
     }
 
-  } else if (!connected && currentScreen != ERROR_SCREEN) {
-    currentScreen = ERROR_SCREEN;
+  } else if (!connected && state.currentScreen != ERROR_SCREEN) {
+    state.currentScreen = ERROR_SCREEN;
     drawErrorScreen();
   }
 
-  return currentScreen;
+  return state;
 }
 
 void initDisplay(DisplayScreens defaultScreen) {
@@ -509,18 +530,18 @@ void initDisplay(DisplayScreens defaultScreen) {
   switch(defaultScreen) {
     case GPS_SCREEN:
       drawMainScreenGps();
-      currentDisplayScreen = GPS_SCREEN;
+      displayState.currentScreen = GPS_SCREEN;
       currentGpsSelection = selectMainScreenGps(currentGpsSelection);
       currentGpsSelection.nextPos = 2;
       break;
 
     case SONAR_SCREEN:
       // drawMainScreenSonar();
-      currentDisplayScreen = SONAR_SCREEN;
+      displayState.currentScreen = SONAR_SCREEN;
       break;
 
     default:
-      currentDisplayScreen = NONE;
+      displayState.currentScreen = NONE;
       break;
   }
 }
