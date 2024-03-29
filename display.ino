@@ -10,6 +10,7 @@
 
 #define DISPLAY_BUTTON_MENU 4
 #define DISPLAY_BUTTON_SELECT 3
+#define DISPLAY_BUTTON_CONFIRM 2
 
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
@@ -22,12 +23,16 @@ enum DisplayScreens {
 
 struct SelectButton {
   uint8_t position;
+  uint8_t nextPos;
   uint16_t rectX;
   uint16_t rectY;
 };
 
+const uint8_t buttonWidth  = 180;
+const uint8_t buttonHeight = 30;
+
 DisplayScreens currentDisplayScreen = NONE;
-SelectButton currentSelection = {0, 20, 20};
+SelectButton currentSelection = {1, 2, 30, 40};
 
 void setup(void) {
   Serial.begin(9600);
@@ -37,6 +42,7 @@ void setup(void) {
 
   pinMode(DISPLAY_BUTTON_MENU, INPUT_PULLUP);
   pinMode(DISPLAY_BUTTON_SELECT, INPUT_PULLUP);
+  pinMode(DISPLAY_BUTTON_CONFIRM, INPUT_PULLUP);
 }
 
 void loop() {  
@@ -264,36 +270,18 @@ void drawErrorScreen() {
   tft.print("NO CONNECTION!");
 }
 
-void unselectMainScreenGps(uint16_t rectX, uint16_t rectY, uint16_t color) {
-
-  const uint8_t buttonWidth  = 180;
-  const uint8_t buttonHeight = 30;
-
-  uint16_t rectWidth = tft.width(); - 80;
-  uint16_t rectHeight = tft.height();
-
-  /// Unselect 
-  tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, color);
-}
-
 SelectButton selectMainScreenGps(SelectButton selectionState) {
-  const uint8_t buttonWidth  = 180;
-  const uint8_t buttonHeight = 30;
 
   uint8_t rectX = selectionState.rectX;
   uint8_t rectY = selectionState.rectY;
-  
-  uint16_t rectWidth = tft.width(); - 80;
-  uint16_t rectHeight = tft.height();
 
-  if (selectionState.position == 0)
-    unselectMainScreenGps(rectX, rectY + 3*20 + 3*buttonHeight, ST77XX_WHITE);
+  if (selectionState.position == 1)
+    tft.drawRect(rectX, rectY + 3*20 + 3*buttonHeight, buttonWidth, buttonHeight, ST77XX_WHITE);
   else 
-    unselectMainScreenGps(rectX, rectY - 20 - buttonHeight, ST77XX_WHITE);  
+    tft.drawRect(rectX, rectY - 20 - buttonHeight, buttonWidth, buttonHeight, ST77XX_WHITE);  
 
   /// Highlight 
-  tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_YELLOW);
-  rectY = rectY + 20 + buttonHeight;
+  tft.drawRect(rectX, rectY, buttonWidth, buttonHeight, ST77XX_YELLOW);
 
   selectionState.rectX = rectX;
   selectionState.rectY = rectY;
@@ -425,6 +413,7 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
   // ...
   uint8_t menuButtonState = digitalRead(DISPLAY_BUTTON_MENU);
   uint8_t selectButtonState = digitalRead(DISPLAY_BUTTON_SELECT);
+  uint8_t confirmButtonState = digitalRead(DISPLAY_BUTTON_CONFIRM);
 
   if (menuButtonState == LOW) {
 
@@ -438,33 +427,45 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
 
       currentSelection = selectMainScreenGps(currentSelection);    
       currentSelection.position = 0;
-      currentSelection.rectX = 20;
-      currentSelection.rectY = 20;
+      currentSelection.rectX = 30;
+      currentSelection.rectY = 40;
     }
   }
 
   if (selectButtonState == LOW && currentScreen == GPS_SCREEN) {
     
-    switch(currentSelection.position) {
-      case 0:        
-        currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.position += 1;
-        break;
+    switch(currentSelection.nextPos) {
       case 1:        
+        currentSelection.position = 1;
+        currentSelection.rectX = 30;
+        currentSelection.rectY = 40;    
         currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.position += 1;
+        currentSelection.nextPos += 1;
         break;
-      case 2:        
-        currentSelection = selectMainScreenGps(currentSelection);
+      case 2:
         currentSelection.position += 1;
-        break;
-      case 3:        
+        currentSelection.rectY = currentSelection.rectY + 20 + buttonHeight;
         currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.position = 0;
-        currentSelection.rectX = 20;
-        currentSelection.rectY = 20;
+        currentSelection.nextPos += 1;
+        break;
+      case 3:
+        currentSelection.position += 1;
+        currentSelection.rectY = currentSelection.rectY + 20 + buttonHeight;    
+        currentSelection = selectMainScreenGps(currentSelection);
+        currentSelection.nextPos += 1;
+        break;
+      case 4:
+        currentSelection.position += 1;
+        currentSelection.rectY = currentSelection.rectY + 20 + buttonHeight; 
+        currentSelection = selectMainScreenGps(currentSelection);
+        currentSelection.nextPos = 1;
         break;
     }    
+  }
+
+  if (confirmButtonState == LOW && currentScreen == GPS_SCREEN) {
+    tft.drawRect(currentSelection.rectX, currentSelection.rectY, buttonWidth, buttonHeight, ST77XX_GREEN);
+    Serial.print("Chosen position: "); Serial.println(currentSelection.position);
   }
 
   /// Update values
@@ -501,7 +502,7 @@ void initDisplay(DisplayScreens defaultScreen) {
       drawMainScreenGps();
       currentDisplayScreen = GPS_SCREEN;
       currentSelection = selectMainScreenGps(currentSelection);
-      currentSelection.position += 1;
+      currentSelection.nextPos = 2;
       break;
 
     case SONAR_SCREEN:
