@@ -8,6 +8,9 @@
 #define TFT_MOSI      11
 #define TFT_SCLK      13
 
+#define DISPLAY_BUTTON_MENU 4
+#define DISPLAY_BUTTON_SELECT 3
+
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 enum DisplayScreens {
@@ -18,6 +21,20 @@ enum DisplayScreens {
 };
 
 DisplayScreens currentDisplayScreen = NONE;
+
+void setup(void) {
+  Serial.begin(9600);
+  Serial.print(F("Hello! ST77xx TFT Test"));
+
+  initDisplay(GPS_SCREEN);
+
+  pinMode(DISPLAY_BUTTON_MENU, INPUT_PULLUP);
+}
+
+void loop() {  
+  bool connected = true; // hodnotu by som bral z nejakej get funkcie
+  currentDisplayScreen = updateDisplay(connected, currentDisplayScreen);
+}
 
 void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t batteryMargin, uint16_t batteryX, uint16_t batteryY, uint8_t batteryCharge) {
   /// Battery colors
@@ -41,6 +58,14 @@ void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t battery
 
   /// Draw battery border
   tft.drawRect(batteryX, batteryY, batteryWidth, batteryHeight, BATTERY_BORDER_COLOR);
+}
+
+void updateTopBarBackground() {
+  int rectX = 90;
+  int rectY = 0;
+  int rectWidth = 100;
+  int rectHeight = 15; // Adjust the height of the rectangle as needed
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
 }
 
 void updateTopBar(bool connected, DisplayScreens currentScreen) {
@@ -87,7 +112,7 @@ void updateTopBar(bool connected, DisplayScreens currentScreen) {
 
   /// Draw battery icons
   drawBattery(20, 8, 2, tft.width() - 24, 2, 13); // Boat Battery
-  drawBattery(20, 8, 2, tft.width() - 24, 10, 29); // Joystick Battery
+  drawBattery(20, 8, 2, tft.width() - 24, 10, 29); // Joystick Battery  
 
   /// Current Screen
   switch (currentScreen) {
@@ -200,7 +225,7 @@ void drawMainScreenBackground() {
   int rectY = 20;
   int rectWidth = tft.width() - 80;
   int rectHeight = tft.height() - 20;
-  //tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
   tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
 }
 
@@ -296,6 +321,16 @@ void updateMainScreenGpsValues() {
   rectY = rectY + 20 + buttonHeight;
 }
 
+void drawMainScreenSonar() {
+  // Main screen
+  int rectX = 0;
+  int rectY = 20;
+  int rectWidth = tft.width() - 80;
+  int rectHeight = tft.height() - 20;
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
+  tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
+}
+
 void drawMainScreenGps() {
   drawMainScreenBackground();
   
@@ -339,8 +374,32 @@ void drawMainScreenGps() {
 
 DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
 
+  DisplayScreens screen = currentScreen;
+
+  // Write logic for redrawing layout when button is pressed
+  // ...
+  Serial.println(digitalRead(DISPLAY_BUTTON_MENU));
+  int menuButtonState = digitalRead(DISPLAY_BUTTON_MENU);
+
+  if (menuButtonState == LOW) {
+
+    if (currentScreen == GPS_SCREEN) {
+      currentScreen = SONAR_SCREEN;
+      drawMainScreenSonar();      
+
+    } else if (currentScreen == SONAR_SCREEN) {
+      currentScreen = GPS_SCREEN;
+      drawMainScreenGps();
+      
+    }
+  }
+
   /// Update values
   if (connected) {
+
+    if (screen != currentScreen)
+      updateTopBarBackground();
+
     updateTopBar(connected, currentScreen);
     
     if (currentScreen == GPS_SCREEN) {
@@ -351,9 +410,6 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
     currentScreen = ERROR_SCREEN;
     drawErrorScreen();
   }
-
-  // Write logic for redrawing layout when button is pressed
-  // ...
 
   return currentScreen;
 }
@@ -382,16 +438,4 @@ void initDisplay(DisplayScreens defaultScreen) {
       currentDisplayScreen = NONE;
       break;
   }
-}
-
-void setup(void) {
-  //Serial.begin(9600);
-  //Serial.print(F("Hello! ST77xx TFT Test"));
-
-  initDisplay(GPS_SCREEN);
-}
-
-void loop() {  
-  bool connected = true; // hodnotu by som bral z nejakej get funkcie
-  currentDisplayScreen = updateDisplay(connected, currentDisplayScreen);
 }
