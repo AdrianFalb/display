@@ -11,6 +11,7 @@
 #define DISPLAY_BUTTON_MENU 4
 #define DISPLAY_BUTTON_SELECT 3
 #define DISPLAY_BUTTON_CONFIRM 2
+#define DISPLAY_BUTTON_HOME 5
 
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
@@ -21,7 +22,7 @@ enum DisplayScreens {
     SONAR_SCREEN = 2
 };
 
-struct SelectButton {
+struct GpsSelection {
   uint8_t position;
   uint8_t nextPos;
   uint16_t rectX;
@@ -32,17 +33,13 @@ const uint8_t buttonWidth  = 180;
 const uint8_t buttonHeight = 30;
 
 DisplayScreens currentDisplayScreen = NONE;
-SelectButton currentSelection = {1, 2, 30, 40};
+GpsSelection currentGpsSelection = {1, 2, 30, 40};
 
 void setup(void) {
   Serial.begin(9600);
   Serial.print(F("Hello! ST77xx TFT Test"));
 
-  initDisplay(GPS_SCREEN);
-
-  pinMode(DISPLAY_BUTTON_MENU, INPUT_PULLUP);
-  pinMode(DISPLAY_BUTTON_SELECT, INPUT_PULLUP);
-  pinMode(DISPLAY_BUTTON_CONFIRM, INPUT_PULLUP);
+  initDisplay(GPS_SCREEN);  
 }
 
 void loop() {  
@@ -270,7 +267,7 @@ void drawErrorScreen() {
   tft.print("NO CONNECTION!");
 }
 
-SelectButton selectMainScreenGps(SelectButton selectionState) {
+GpsSelection selectMainScreenGps(GpsSelection selectionState) {
 
   uint8_t rectX = selectionState.rectX;
   uint8_t rectY = selectionState.rectY;
@@ -412,8 +409,9 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
   // Write logic for redrawing layout when button is pressed
   // ...
   uint8_t menuButtonState = digitalRead(DISPLAY_BUTTON_MENU);
-  uint8_t selectButtonState = digitalRead(DISPLAY_BUTTON_SELECT);
+  uint8_t GpsSelectionState = digitalRead(DISPLAY_BUTTON_SELECT);
   uint8_t confirmButtonState = digitalRead(DISPLAY_BUTTON_CONFIRM);
+  uint8_t homeButtonState = digitalRead(DISPLAY_BUTTON_HOME);
 
   if (menuButtonState == LOW) {
 
@@ -425,47 +423,51 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
       currentScreen = GPS_SCREEN;
       drawMainScreenGps();
 
-      currentSelection = selectMainScreenGps(currentSelection);    
-      currentSelection.position = 0;
-      currentSelection.rectX = 30;
-      currentSelection.rectY = 40;
+      currentGpsSelection = selectMainScreenGps(currentGpsSelection);    
+      currentGpsSelection.position = 0;
+      currentGpsSelection.rectX = 30;
+      currentGpsSelection.rectY = 40;
     }
   }
 
-  if (selectButtonState == LOW && currentScreen == GPS_SCREEN) {
+  if (GpsSelectionState == LOW && currentScreen == GPS_SCREEN) {
     
-    switch(currentSelection.nextPos) {
+    switch(currentGpsSelection.nextPos) {
       case 1:        
-        currentSelection.position = 1;
-        currentSelection.rectX = 30;
-        currentSelection.rectY = 40;    
-        currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.nextPos += 1;
+        currentGpsSelection.position = 1;
+        currentGpsSelection.rectX = 30;
+        currentGpsSelection.rectY = 40;    
+        currentGpsSelection = selectMainScreenGps(currentGpsSelection);
+        currentGpsSelection.nextPos += 1;
         break;
       case 2:
-        currentSelection.position += 1;
-        currentSelection.rectY = currentSelection.rectY + 20 + buttonHeight;
-        currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.nextPos += 1;
+        currentGpsSelection.position += 1;
+        currentGpsSelection.rectY = currentGpsSelection.rectY + 20 + buttonHeight;
+        currentGpsSelection = selectMainScreenGps(currentGpsSelection);
+        currentGpsSelection.nextPos += 1;
         break;
       case 3:
-        currentSelection.position += 1;
-        currentSelection.rectY = currentSelection.rectY + 20 + buttonHeight;    
-        currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.nextPos += 1;
+        currentGpsSelection.position += 1;
+        currentGpsSelection.rectY = currentGpsSelection.rectY + 20 + buttonHeight;    
+        currentGpsSelection = selectMainScreenGps(currentGpsSelection);
+        currentGpsSelection.nextPos += 1;
         break;
       case 4:
-        currentSelection.position += 1;
-        currentSelection.rectY = currentSelection.rectY + 20 + buttonHeight; 
-        currentSelection = selectMainScreenGps(currentSelection);
-        currentSelection.nextPos = 1;
+        currentGpsSelection.position += 1;
+        currentGpsSelection.rectY = currentGpsSelection.rectY + 20 + buttonHeight; 
+        currentGpsSelection = selectMainScreenGps(currentGpsSelection);
+        currentGpsSelection.nextPos = 1;
         break;
     }    
   }
 
   if (confirmButtonState == LOW && currentScreen == GPS_SCREEN) {
-    tft.drawRect(currentSelection.rectX, currentSelection.rectY, buttonWidth, buttonHeight, ST77XX_GREEN);
-    Serial.print("Chosen position: "); Serial.println(currentSelection.position);
+    tft.drawRect(currentGpsSelection.rectX, currentGpsSelection.rectY, buttonWidth, buttonHeight, ST77XX_GREEN);
+    Serial.print("Chosen position: "); Serial.println(currentGpsSelection.position);
+  }
+
+  if (homeButtonState == LOW) {
+    Serial.println("Going home!");
   }
 
   /// Update values
@@ -489,10 +491,17 @@ DisplayScreens updateDisplay(bool connected, DisplayScreens currentScreen) {
 }
 
 void initDisplay(DisplayScreens defaultScreen) {
+  /// Init Pins
+  pinMode(DISPLAY_BUTTON_MENU, INPUT_PULLUP);
+  pinMode(DISPLAY_BUTTON_SELECT, INPUT_PULLUP);
+  pinMode(DISPLAY_BUTTON_CONFIRM, INPUT_PULLUP);
+  pinMode(DISPLAY_BUTTON_HOME, INPUT_PULLUP);
+  
+  /// Init display
   tft.init(240, 320);
   tft.setRotation(1); /// To ensure that 0, 0 is in the top left corner...
   tft.invertDisplay(false); /// for some reason the default of the display is to be inverted...
-  tft.fillScreen(ST77XX_BLACK);  
+  tft.fillScreen(ST77XX_BLACK);
 
   drawTopBar();
   drawRightMenuBar();
@@ -501,8 +510,8 @@ void initDisplay(DisplayScreens defaultScreen) {
     case GPS_SCREEN:
       drawMainScreenGps();
       currentDisplayScreen = GPS_SCREEN;
-      currentSelection = selectMainScreenGps(currentSelection);
-      currentSelection.nextPos = 2;
+      currentGpsSelection = selectMainScreenGps(currentGpsSelection);
+      currentGpsSelection.nextPos = 2;
       break;
 
     case SONAR_SCREEN:
