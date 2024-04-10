@@ -6,6 +6,7 @@
 #define TFT_RST        8
 #define TFT_DC         9
 #define TFT_MOSI      11
+
 #define TFT_SCLK      13
 
 #define DISPLAY_BUTTON_MENU 4
@@ -40,17 +41,71 @@ struct DisplayState {
 const uint8_t displayButtonWidth  = 180;
 const uint8_t displayButtonHeight = 30;
 
+// Circular buffer to hold lake floor data
+uint16_t displayLakeFloorBuffer[240];
+
 struct DisplayGpsSelectionData *currentGpsSelection;
 struct DisplayState *displayState;
 
 void setup(void) {
   Serial.begin(9600);
-  initDisplay(GPS_SCREEN);
+  initDisplay(SONAR_SCREEN);
 }
 
 void loop() {  
   bool connected = true; // hodnotu by som bral z nejakej get funkcie
   updateDisplay(connected, displayState);
+}
+
+/// Function to shift lake floor buffer to the left by one pixel
+void displayShiftLakeFloorBuffer(int amount) {
+    for (int i = amount; i < tft.width() - 80; i++) {
+        displayLakeFloorBuffer[i - amount] = displayLakeFloorBuffer[i];
+    }
+    // Fill the shifted portion with default values (bottom of the screen)
+    for (int i = tft.width() - 80 - amount; i < tft.width() - 80; i++) {
+        displayLakeFloorBuffer[i] = tft.height();
+    }
+}
+
+void drawFishFinder(float sonarData) {
+
+    // Calculate point position based on sonar data
+    const float maxDistance = 600.0;  // Maximum distance (adjust based on your sonar)
+    const uint8_t SCROLL_AMOUNT = 4;
+    const uint8_t LAKE_FLOOR_HEIGHT = 20;
+    const uint8_t TOP_BAR_MARGIN = 40;
+
+    // Map sonar data to lake floor Y coordinate within the drawing area
+    uint16_t lakeFloorY = map(sonarData, 0, 600, tft.height(), TOP_BAR_MARGIN);
+
+    // Shift lake floor buffer to the left by one pixel
+    displayShiftLakeFloorBuffer(SCROLL_AMOUNT);
+
+    // Update the newest lake floor Y coordinate at the rightmost position
+    displayLakeFloorBuffer[tft.width() - 80 - 1] = lakeFloorY;
+
+    // Clear display and redraw the lake floor
+    drawMainScreenBackground(ST77XX_BLACK);
+
+    // Draw lake floor lines with specified width (SCROLL_AMOUNT)
+    for (int x = 0; x < tft.width() - 80 - SCROLL_AMOUNT; x++) {
+        int yStart = displayLakeFloorBuffer[x];
+        int yEnd = tft.height() - 1;  // Draw lines from lake floor to the bottom of the screen
+
+        // Calculate line start and end points
+        int startY = min(yStart, yEnd);
+        int endY = max(yStart, yEnd);
+
+        // Draw a horizontal line with specified width (SCROLL_AMOUNT) from startY to endY at position x
+        tft.drawFastHLine(x, startY, SCROLL_AMOUNT, ST77XX_RED);
+
+        // Ensure no overlap by drawing additional lines if needed
+        while (yEnd > startY) {
+            startY++;
+            tft.drawFastHLine(x, startY, SCROLL_AMOUNT, ST77XX_RED);
+        }
+    }
 }
 
 void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t batteryMargin, uint16_t batteryX, uint16_t batteryY, uint8_t batteryCharge) {
@@ -206,13 +261,13 @@ void drawRightMenuBar() {
   rectY = rectY + 20 + buttonHeight;  
 }
 
-void drawMainScreenBackground() {  
+void drawMainScreenBackground(uint16_t backgroundColor) {  
   /// Main screen
   uint16_t rectX = 0;
   uint16_t rectY = 20;
   uint16_t rectWidth = tft.width() - 80;
   uint16_t rectHeight = tft.height() - 20;
-  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, backgroundColor);
   tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
 }
 
@@ -322,18 +377,42 @@ void updateMainScreenGpsValues() {
   rectY = rectY + 20 + displayButtonHeight;
 }
 
-void drawMainScreenSonar() {
-  /// Main screen
-  uint16_t rectX = 0;
-  uint16_t rectY = 20;
-  uint16_t rectWidth = tft.width() - 80;
+void updateMainScreenSonarValues() {
+  // Random value between 0 and 600 (replace with real data)
+  float sonarData = random(0, 600);
+
+  // Draw fish finder point based on sonar data
+  drawFishFinder(sonarData);
+
+  tft.setCursor(4, tft.height() - 10);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextSize(1);
+
+  const int CURSOR_NEW_LINE = 10;
+  uint16_t rectX = 20;
+  uint16_t rectY = 40;
+  uint16_t rectWidth = tft.width(); - 80;
   uint16_t rectHeight = tft.height() - 20;
-  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
-  tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
+
+  tft.drawLine(rectX, rectY, rectX, rectHeight, ST77XX_WHITE);
+
+  uint16_t height = 600;
+  tft.print(height);
+  tft.print(" cm");
+
+  uint16_t numberOfFish = 12;
+  tft.setCursor(tft.width() - 120, 24);
+  tft.print("Fish: "); 
+  tft.setCursor(tft.width() - 120, 32);
+  tft.print(numberOfFish);
+}
+
+void drawMainScreenSonar() {
+  drawMainScreenBackground(ST77XX_BLUE);  
 }
 
 void drawMainScreenGps() {
-  drawMainScreenBackground();
+  drawMainScreenBackground(ST77XX_BLACK);
   
   const int CURSOR_NEW_LINE = 10;
   uint16_t rectX = 20;
@@ -462,6 +541,8 @@ void updateDisplay(bool connected, struct DisplayState *state) {
     
     if (state->currentScreen == GPS_SCREEN) {
       updateMainScreenGpsValues();
+    } else if (state->currentScreen == SONAR_SCREEN) {
+      updateMainScreenSonarValues();      
     }
 
   } else if (!connected && state->currentScreen != ERROR_SCREEN) {
@@ -475,11 +556,20 @@ void initDisplay(DisplayScreens defaultScreen) {
   pinMode(DISPLAY_BUTTON_MENU, INPUT_PULLUP);
   pinMode(DISPLAY_BUTTON_SELECT, INPUT_PULLUP);
   pinMode(DISPLAY_BUTTON_CONFIRM, INPUT_PULLUP);
-  pinMode(DISPLAY_BUTTON_HOME, INPUT_PULLUP);
+  pinMode(DISPLAY_BUTTON_HOME, INPUT_PULLUP);  
+  
+  /// Init display
+  tft.init(240, 320);
+  tft.setRotation(1); /// To ensure that 0, 0 is in the top left corner...
+  tft.invertDisplay(false); /// for some reason the default of the display is to be inverted...
+  tft.fillScreen(ST77XX_BLACK);
+
+  drawTopBar();
+  drawRightMenuBar();
 
   /// Init structs
-  displayState = (struct DisplayState *)malloc(sizeof(struct DisplayState));
-  if (displayState == NULL) {
+  displayState = new DisplayState;
+  if (displayState == nullptr) {
       // Memory allocation failed
       // Handle error
   } else {
@@ -491,8 +581,8 @@ void initDisplay(DisplayScreens defaultScreen) {
       displayState->homeButtonPressed = false;
   }
 
-  currentGpsSelection = (struct DisplayGpsSelectionData *)malloc(sizeof(struct DisplayGpsSelectionData));
-  if (currentGpsSelection == NULL) {
+  currentGpsSelection = new DisplayGpsSelectionData;
+  if (currentGpsSelection == nullptr) {
       // Memory allocation failed
       // Handle error
   } else {
@@ -501,16 +591,12 @@ void initDisplay(DisplayScreens defaultScreen) {
       currentGpsSelection->nextPos = 2;
       currentGpsSelection->rectX = 30;
       currentGpsSelection->rectY = 40;
-  }
-  
-  /// Init display
-  tft.init(240, 320);
-  tft.setRotation(1); /// To ensure that 0, 0 is in the top left corner...
-  tft.invertDisplay(false); /// for some reason the default of the display is to be inverted...
-  tft.fillScreen(ST77XX_BLACK);
+  }  
 
-  drawTopBar();
-  drawRightMenuBar();
+  /// Initialize lake floor buffer with default values (bottom of the screen)
+  for (int i = 0; i < tft.width() - 80; i++) {
+    displayLakeFloorBuffer[i] = tft.height();
+  }
 
   switch(defaultScreen) {
     case GPS_SCREEN:
@@ -521,8 +607,10 @@ void initDisplay(DisplayScreens defaultScreen) {
       break;
 
     case SONAR_SCREEN:
-      // drawMainScreenSonar();
+      drawMainScreenSonar();
       displayState->currentScreen = SONAR_SCREEN;
+      selectMainScreenGps(currentGpsSelection);
+      currentGpsSelection->nextPos = 2;
       break;
 
     default:
