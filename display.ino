@@ -47,6 +47,8 @@ uint16_t displayLakeFloorBuffer[240];
 struct DisplayGpsSelectionData *currentGpsSelection;
 struct DisplayState *displayState;
 
+int drawIndex;
+
 void setup(void) {
   Serial.begin(9600);
   initDisplay(SONAR_SCREEN);
@@ -68,25 +70,69 @@ void displayShiftLakeFloorBuffer(int amount) {
     }
 }
 
-void drawFishFinder(float sonarData) {
-
-    // Calculate point position based on sonar data
+void drawFishFinder(float sonarData, int lineThickness) {
     const float maxDistance = 600.0;  // Maximum distance (adjust based on your sonar)
-    const uint8_t SCROLL_AMOUNT = 4;
+    const uint8_t SCROLL_AMOUNT = 6;
     const uint8_t LAKE_FLOOR_HEIGHT = 20;
     const uint8_t TOP_BAR_MARGIN = 40;
 
     // Map sonar data to lake floor Y coordinate within the drawing area
-    uint16_t lakeFloorY = map(sonarData, 0, 600, tft.height(), TOP_BAR_MARGIN);
+    uint16_t lakeFloorY = map(sonarData, 0, maxDistance, tft.height() - 2, TOP_BAR_MARGIN);
+
+    // Update the lake floor buffer at the current draw index
+    displayLakeFloorBuffer[drawIndex] = lakeFloorY;
+
+    // Calculate the height of the line from SCREEN_HEIGHT to lakeFloorY
+    int lineHeight = tft.height() - 1 - lakeFloorY;
+
+    // Draw vertical line with specified line thickness from SCREEN_HEIGHT to lakeFloorY at the current draw index
+    for (int i = 0; i < lineThickness; i++) {
+        tft.drawFastVLine(drawIndex + i, lakeFloorY, lineHeight, ST77XX_RED);
+    }
+
+    // Increment draw index
+    drawIndex += SCROLL_AMOUNT;
+
+    // Check if draw index has reached or exceeded the screen width
+    if (drawIndex >= tft.width() - 80) {
+        // Reset draw index to start drawing from the beginning of the screen
+        drawIndex = 0;
+
+        uint16_t rectX = 0;
+        uint16_t rectY = 40;
+        uint16_t rectWidth = tft.width() - 80;
+        uint16_t rectHeight = tft.height() - 40;
+        tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
+    }
+}
+
+void drawFishFinderV2(float sonarData) {
+
+    // Calculate point position based on sonar data
+    const float maxDistance = 600.0;  // Maximum distance (adjust based on your sonar)
+    const uint8_t SCROLL_AMOUNT = 6;
+    const uint8_t LAKE_FLOOR_HEIGHT = 20;
+    const uint8_t TOP_BAR_MARGIN = 40;
+
+    // Map sonar data to lake floor Y coordinate within the drawing area
+    uint16_t lakeFloorY = map(sonarData, 0, maxDistance, tft.height() - 2, TOP_BAR_MARGIN);
 
     // Shift lake floor buffer to the left by one pixel
     displayShiftLakeFloorBuffer(SCROLL_AMOUNT);
 
     // Update the newest lake floor Y coordinate at the rightmost position
-    displayLakeFloorBuffer[tft.width() - 80 - 1] = lakeFloorY;
+    displayLakeFloorBuffer[tft.width() - 80] = lakeFloorY;
 
     // Clear display and redraw the lake floor
-    drawMainScreenBackground(ST77XX_BLACK);
+    //drawMainScreenBackground(ST77XX_BLACK);
+
+    /// Main screen
+    uint16_t rectX = 0;
+    uint16_t rectY = 40;
+    uint16_t rectWidth = tft.width() - 80;
+    uint16_t rectHeight = tft.height() - 20;
+    tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
+    //tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
 
     // Draw lake floor lines with specified width (SCROLL_AMOUNT)
     for (int x = 0; x < tft.width() - 80 - SCROLL_AMOUNT; x++) {
@@ -105,7 +151,7 @@ void drawFishFinder(float sonarData) {
             startY++;
             tft.drawFastHLine(x, startY, SCROLL_AMOUNT, ST77XX_RED);
         }
-    }
+    }   
 }
 
 void drawBattery(uint16_t batteryWidth, uint16_t batteryHeight, uint16_t batteryMargin, uint16_t batteryX, uint16_t batteryY, uint8_t batteryCharge) {
@@ -377,26 +423,25 @@ void updateMainScreenGpsValues() {
   rectY = rectY + 20 + displayButtonHeight;
 }
 
-void updateMainScreenSonarValues() {
-  // Random value between 0 and 600 (replace with real data)
-  float sonarData = random(0, 600);
+void updateMainScreenSonarValues() {  
+  float sonarData = random(0, 600); // Random value between 0 and 600 (replace with real data) TODO: GETTER
 
   // Draw fish finder point based on sonar data
-  drawFishFinder(sonarData);
+  drawFishFinder(sonarData, 6);
+
+  uint16_t rectX = 20;
+  uint16_t rectY = 40;
+  uint16_t rectWidth = tft.width() - 80;
+  uint16_t rectHeight = tft.height() - 20;
+
+  tft.drawLine(rectX, rectY, rectX, rectHeight, ST77XX_WHITE);
+  tft.drawLine(rectX-5, (rectY+rectHeight)/2, rectX+5, (rectY+rectHeight)/2, ST77XX_WHITE);
 
   tft.setCursor(4, tft.height() - 10);
   tft.setTextColor(ST77XX_WHITE);
   tft.setTextSize(1);
 
-  const int CURSOR_NEW_LINE = 10;
-  uint16_t rectX = 20;
-  uint16_t rectY = 40;
-  uint16_t rectWidth = tft.width(); - 80;
-  uint16_t rectHeight = tft.height() - 20;
-
-  tft.drawLine(rectX, rectY, rectX, rectHeight, ST77XX_WHITE);
-
-  uint16_t height = 600;
+  uint16_t height = 600; // In cm 
   tft.print(height);
   tft.print(" cm");
 
@@ -408,7 +453,13 @@ void updateMainScreenSonarValues() {
 }
 
 void drawMainScreenSonar() {
-  drawMainScreenBackground(ST77XX_BLUE);  
+  //drawMainScreenBackground(ST77XX_BLACK);  
+
+  uint16_t rectX = 0;
+  uint16_t rectY = 20;
+  uint16_t rectWidth = tft.width() - 80;
+  uint16_t rectHeight = tft.height() - 20;
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLACK);
 }
 
 void drawMainScreenGps() {
@@ -475,6 +526,7 @@ void updateDisplay(bool connected, struct DisplayState *state) {
       currentGpsSelection->rectX = 30;
       currentGpsSelection->rectY = 40;
     }
+
     state->menuButtonPressed = true;  
   } else if (menuButtonState == HIGH) {    
     state->menuButtonPressed = false;
