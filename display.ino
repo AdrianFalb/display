@@ -434,8 +434,22 @@ void updateMainScreenSonarValues() {
   uint16_t rectWidth = tft.width() - 80;
   uint16_t rectHeight = tft.height() - 20;
 
-  tft.drawLine(rectX, rectY, rectX, rectHeight, ST77XX_WHITE);
-  tft.drawLine(rectX-5, (rectY+rectHeight)/2, rectX+5, (rectY+rectHeight)/2, ST77XX_WHITE);
+  const uint8_t NUM_POINTS = 5;
+  const uint8_t POINT_VALUES[NUM_POINTS] = {25, 50, 75, 100, 0};  // Values to map
+  uint16_t lakeFloorY[NUM_POINTS];  // Array to store mapped Y coordinates
+
+  // Calculate mapped Y coordinates for each point
+  for (int i = 0; i < NUM_POINTS; i++) {
+      lakeFloorY[i] = map(POINT_VALUES[i], 0, 100, rectHeight, rectY);
+  }
+
+  // Draw lines for each mapped Y coordinate
+  for (int i = 0; i < NUM_POINTS; i++) {
+      tft.drawLine(rectX - 5, lakeFloorY[i], rectX + 5, lakeFloorY[i], ST77XX_WHITE);
+  }
+
+  // Draw a vertical line on the left side of the display
+  tft.drawLine(rectX, rectY, rectX, rectHeight, ST77XX_WHITE);  
 
   tft.setCursor(4, tft.height() - 10);
   tft.setTextColor(ST77XX_WHITE);
@@ -525,6 +539,8 @@ void updateDisplay(bool connected, struct DisplayState *state) {
       currentGpsSelection->nextPos = 2;
       currentGpsSelection->rectX = 30;
       currentGpsSelection->rectY = 40;
+
+      drawIndex = 0;
     }
 
     state->menuButtonPressed = true;  
