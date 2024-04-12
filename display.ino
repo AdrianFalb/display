@@ -35,11 +35,13 @@ struct DisplayState {
   bool homeButtonPressed;
 };
 
-const uint8_t DISPLAY_BUTTON_WIDTH  = 180;
-const uint8_t DISPLAY_BUTTON_HEIGHT = 30;
-const uint8_t DISPLAY_TOP_BAR_COLOR = ST77XX_BLACK;
-const uint8_t DISPLAY_MENU_BAR_COLOR = ST77XX_BLUE;
-const uint8_t DISPLAY_MAIN_SCREEN_COLOR = ST77XX_BLACK;
+#define DISPLAY_BUTTON_WIDTH  180
+#define DISPLAY_BUTTON_HEIGHT 30
+#define DISPLAY_TOP_BAR_COLOR ST77XX_BLACK
+#define DISPLAY_MENU_BAR_COLOR ST77XX_BLACK
+#define DISPLAY_MENU_BAR_BUTTON_COLOR ST77XX_WHITE
+#define DISPLAY_MAIN_SCREEN_COLOR ST77XX_BLACK
+#define DISPLAY_SONAR_DATA_COLOR ST77XX_BLUE
 
 // Circular buffer to hold lake floor data
 uint16_t displayLakeFloorBuffer[240];
@@ -87,7 +89,7 @@ void drawFishFinder(float sonarData, int lineThickness) {
 
     // Draw vertical line with specified line thickness from SCREEN_HEIGHT to lakeFloorY at the current draw index
     for (int i = 0; i < lineThickness; i++) {
-        tft.drawFastVLine(drawIndex + i, lakeFloorY, lineHeight, ST77XX_RED);
+        tft.drawFastVLine(drawIndex + i, lakeFloorY, lineHeight, DISPLAY_SONAR_DATA_COLOR);
     }
 
     // Increment draw index
@@ -280,25 +282,33 @@ void drawRightMenuBar() {
   uint8_t buttonHeight = 30;
 
   /// Menu button
-  tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_BLACK);
+  //tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+  tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("MENU");
   rectY = rectY + 20 + buttonHeight;
 
-  tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_BLACK);
+  //tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+  tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("SELECT");
   rectY = rectY + 20 + buttonHeight;
 
-  tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_BLACK);
+  //tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+  tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("CONFIRM");
   rectY = rectY + 20 + buttonHeight;
 
-  tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, ST77XX_BLACK);
+  //tft.fillRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+  tft.drawRect(rectX + 10, rectY + 20, buttonWidth, buttonHeight, DISPLAY_MENU_BAR_BUTTON_COLOR);
+
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("HOME");
