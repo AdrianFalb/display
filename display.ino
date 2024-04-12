@@ -5,9 +5,6 @@
 #define TFT_CS        10
 #define TFT_RST        8
 #define TFT_DC         9
-#define TFT_MOSI      11
-
-#define TFT_SCLK      13
 
 #define DISPLAY_BUTTON_MENU 4
 #define DISPLAY_BUTTON_SELECT 3
@@ -38,8 +35,11 @@ struct DisplayState {
   bool homeButtonPressed;
 };
 
-const uint8_t displayButtonWidth  = 180;
-const uint8_t displayButtonHeight = 30;
+const uint8_t DISPLAY_BUTTON_WIDTH  = 180;
+const uint8_t DISPLAY_BUTTON_HEIGHT = 30;
+const uint8_t DISPLAY_TOP_BAR_COLOR = ST77XX_BLACK;
+const uint8_t DISPLAY_MENU_BAR_COLOR = ST77XX_BLUE;
+const uint8_t DISPLAY_MAIN_SCREEN_COLOR = ST77XX_BLACK;
 
 // Circular buffer to hold lake floor data
 uint16_t displayLakeFloorBuffer[240];
@@ -47,15 +47,15 @@ uint16_t displayLakeFloorBuffer[240];
 struct DisplayGpsSelectionData *currentGpsSelection;
 struct DisplayState *displayState;
 
-int drawIndex;
+uint16_t drawIndex;
 
 void setup(void) {
   Serial.begin(9600);
-  initDisplay(SONAR_SCREEN);
+  initDisplay(GPS_SCREEN);
 }
 
 void loop() {  
-  bool connected = true; // hodnotu by som bral z nejakej get funkcie
+  bool connected = true; // TODO: GETTER hodnotu by som bral z nejakej get funkcie
   updateDisplay(connected, displayState);
 }
 
@@ -183,23 +183,22 @@ void updateTopBarBackground() {
   uint8_t rectY = 0;
   uint8_t rectWidth = 100;
   uint8_t rectHeight = 15;
-  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, DISPLAY_TOP_BAR_COLOR);
 }
 
-void updateTopBar(bool connected, DisplayScreens currentScreen) {
+void updateTopBar(bool connected, uint8_t numberOfSatellites, DisplayScreens currentScreen) {
   /// Satellites
   //tft.setCursor(68, 2);
   tft.setCursor(0, 2);
   tft.setTextSize(1);  
 
-  uint16_t numOfSatellites = 8; // tu by som bral hodnotu z nejakej get funkcie
   const uint8_t idealNumOfSatellites = 7;
   const uint8_t useableNumOfSatellites = 5;
 
-  if (numOfSatellites < useableNumOfSatellites) {
+  if (numberOfSatellites < useableNumOfSatellites) {
     tft.setTextColor(ST77XX_MAGENTA); // bieda
 
-  } else if (numOfSatellites < idealNumOfSatellites && numOfSatellites >= useableNumOfSatellites) {
+  } else if (numberOfSatellites < idealNumOfSatellites && numberOfSatellites >= useableNumOfSatellites) {
     tft.setTextColor(ST77XX_ORANGE); // take da sa
 
   } else {
@@ -207,7 +206,7 @@ void updateTopBar(bool connected, DisplayScreens currentScreen) {
   }
 
   tft.print("Satellites: ");
-  tft.print(numOfSatellites);
+  tft.print(numberOfSatellites);
 
   /// Connection Status
   tft.setCursor(72, 10);
@@ -253,7 +252,7 @@ void drawTopBar() {
   int rectY = 0;
   int rectWidth = tft.width();
   int rectHeight = 20;
-  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_RED);
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, DISPLAY_TOP_BAR_COLOR);
 
   /// Boat Battery
   tft.setCursor(tft.width() - 56, 2);
@@ -274,7 +273,7 @@ void drawRightMenuBar() {
   uint16_t rectY = 20;
   uint16_t rectWidth = tft.width();
   uint16_t rectHeight = tft.height();
-  tft.fillRect(rectX, rectY, rectWidth, rectHeight, ST77XX_BLUE);
+  tft.fillRect(rectX, rectY, rectWidth, rectHeight, DISPLAY_MENU_BAR_COLOR);
 
   /// Buttons with text
   uint8_t buttonWidth  = 60;
@@ -317,7 +316,7 @@ void drawMainScreenBackground(uint16_t backgroundColor) {
   tft.drawRect(rectX, rectY, rectWidth, rectHeight, ST77XX_WHITE);
 }
 
-void drawErrorScreen() {
+void drawErrorScreen(uint8_t error) {
   uint16_t rectX = 0;
   uint16_t rectY = 0;
   uint16_t rectWidth = tft.width();
@@ -338,10 +337,20 @@ void drawErrorScreen() {
   tft.setTextColor(ST77XX_RED);
   tft.setTextSize(3);
 
-  tft.setCursor(rectX + 90, rectY + 60);  
-  tft.print("ERROR!");
-  tft.setCursor(rectX + 16, rectY + 20 + 80);
-  tft.print("NO CONNECTION!");
+  switch (error) {
+    case 1:
+      tft.setCursor(rectX + 90, rectY + 60);  
+      tft.print("ERROR!");
+      tft.setCursor(rectX + 16, rectY + 20 + 80);
+      tft.print("NO CONNECTION!");
+      break;
+    case 2:
+      tft.setCursor(rectX + 48, rectY + 60);  
+      tft.print("NOT ENOUGH");
+      tft.setCursor(rectX + 44, rectY + 20 + 80);
+      tft.print("SATELLITES!");
+      break;
+  }
 }
 
 void selectMainScreenGps(struct DisplayGpsSelectionData *selectionState) {
@@ -350,12 +359,12 @@ void selectMainScreenGps(struct DisplayGpsSelectionData *selectionState) {
   uint8_t rectY = selectionState->rectY;
 
   if (selectionState->position == 1)
-    tft.drawRect(rectX, rectY + 3*20 + 3*displayButtonHeight, displayButtonWidth, displayButtonHeight, ST77XX_WHITE);
+    tft.drawRect(rectX, rectY + 3*20 + 3*DISPLAY_BUTTON_HEIGHT, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_WHITE);
   else 
-    tft.drawRect(rectX, rectY - 20 - displayButtonHeight, displayButtonWidth, displayButtonHeight, ST77XX_WHITE);  
+    tft.drawRect(rectX, rectY - 20 - DISPLAY_BUTTON_HEIGHT, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_WHITE);  
 
   /// Highlight 
-  tft.drawRect(rectX, rectY, displayButtonWidth, displayButtonHeight, ST77XX_YELLOW);
+  tft.drawRect(rectX, rectY, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_YELLOW);
 
   selectionState->rectX = rectX;
   selectionState->rectY = rectY;
@@ -382,7 +391,7 @@ void updateMainScreenGpsValues() {
   tft.print(", Long: ");
   float longitude = 73.562;
   tft.print(longitude); // tuto by som bral hodnotu z nejakej get funkcie
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 
   /// GPS Position 2
   tft.setCursor(rectX + 14, rectY + 24 + CURSOR_NEW_LINE);
@@ -394,7 +403,7 @@ void updateMainScreenGpsValues() {
   tft.print(", Long: ");
   longitude = 73.562; // tuto by som bral hodnotu z nejakej get funkcie
   tft.print(longitude);
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 
   /// GPS Position 3
   tft.setCursor(rectX + 14, rectY + 24 + CURSOR_NEW_LINE);
@@ -407,7 +416,7 @@ void updateMainScreenGpsValues() {
   longitude = -73.562; // tuto by som bral hodnotu z nejakej get funkcie
   tft.print(longitude);
 
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 
   /// GPS Position 4
   tft.setCursor(rectX + 14, rectY + 24 + CURSOR_NEW_LINE);  
@@ -420,7 +429,7 @@ void updateMainScreenGpsValues() {
   longitude = -73.562; // tuto by som bral hodnotu z nejakej get funkcie
   tft.print(longitude);
 
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 }
 
 void updateMainScreenSonarValues() {  
@@ -486,32 +495,32 @@ void drawMainScreenGps() {
   uint16_t rectHeight = tft.height();
 
   /// GPS Position 1
-  tft.drawRect(rectX + 10, rectY + 20, displayButtonWidth, displayButtonHeight, ST77XX_WHITE);
+  tft.drawRect(rectX + 10, rectY + 20, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 1");
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 
   /// GPS Position 2
-  tft.drawRect(rectX + 10, rectY + 20, displayButtonWidth, displayButtonHeight, ST77XX_WHITE);
+  tft.drawRect(rectX + 10, rectY + 20, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 2");
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 
   /// GPS Position 3
-  tft.drawRect(rectX + 10, rectY + 20, displayButtonWidth, displayButtonHeight, ST77XX_WHITE);
+  tft.drawRect(rectX + 10, rectY + 20, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 3");
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 
   /// GPS Position 4
-  tft.drawRect(rectX + 10, rectY + 20, displayButtonWidth, displayButtonHeight, ST77XX_WHITE);
+  tft.drawRect(rectX + 10, rectY + 20, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_WHITE);
   tft.setCursor(rectX + 14, rectY + 24);
   tft.setTextSize(1); tft.setTextColor(ST77XX_WHITE);
   tft.print("GPS POSITION 4");
-  rectY = rectY + 20 + displayButtonHeight;
+  rectY = rectY + 20 + DISPLAY_BUTTON_HEIGHT;
 }
 
 void updateDisplay(bool connected, struct DisplayState *state) {
@@ -560,19 +569,19 @@ void updateDisplay(bool connected, struct DisplayState *state) {
         break;
       case 2:
         currentGpsSelection->position += 1;
-        currentGpsSelection->rectY = currentGpsSelection->rectY + 20 + displayButtonHeight;
+        currentGpsSelection->rectY = currentGpsSelection->rectY + 20 + DISPLAY_BUTTON_HEIGHT;
         selectMainScreenGps(currentGpsSelection);
         currentGpsSelection->nextPos += 1;
         break;
       case 3:
         currentGpsSelection->position += 1;
-        currentGpsSelection->rectY = currentGpsSelection->rectY + 20 + displayButtonHeight;    
+        currentGpsSelection->rectY = currentGpsSelection->rectY + 20 + DISPLAY_BUTTON_HEIGHT;    
         selectMainScreenGps(currentGpsSelection);
         currentGpsSelection->nextPos += 1;
         break;
       case 4:
         currentGpsSelection->position += 1;
-        currentGpsSelection->rectY = currentGpsSelection->rectY + 20 + displayButtonHeight; 
+        currentGpsSelection->rectY = currentGpsSelection->rectY + 20 + DISPLAY_BUTTON_HEIGHT; 
         selectMainScreenGps(currentGpsSelection);
         currentGpsSelection->nextPos = 1;
         break;
@@ -583,7 +592,7 @@ void updateDisplay(bool connected, struct DisplayState *state) {
   }
 
   if (confirmButtonState == LOW && state->currentScreen == GPS_SCREEN && !state->confirmButtonPressed) {
-    tft.drawRect(currentGpsSelection->rectX, currentGpsSelection->rectY, displayButtonWidth, displayButtonHeight, ST77XX_GREEN);
+    tft.drawRect(currentGpsSelection->rectX, currentGpsSelection->rectY, DISPLAY_BUTTON_WIDTH, DISPLAY_BUTTON_HEIGHT, ST77XX_GREEN);
     Serial.print("Chosen position: "); Serial.println(currentGpsSelection->position);
 
     state->confirmButtonPressed = true;
@@ -599,13 +608,15 @@ void updateDisplay(bool connected, struct DisplayState *state) {
     state->homeButtonPressed = false;
   }
 
+  uint8_t numberOfSatellites = 4; // TODO: GETTER
+
   /// Update values ================
-  if (connected) {
+  if (connected && numberOfSatellites > 3) {
 
     if (screen != state->currentScreen)
       updateTopBarBackground();
 
-    updateTopBar(connected, state->currentScreen);
+    updateTopBar(connected, numberOfSatellites, state->currentScreen);
     
     if (state->currentScreen == GPS_SCREEN) {
       updateMainScreenGpsValues();
@@ -615,8 +626,11 @@ void updateDisplay(bool connected, struct DisplayState *state) {
 
   } else if (!connected && state->currentScreen != ERROR_SCREEN) {
     state->currentScreen = ERROR_SCREEN;
-    drawErrorScreen();
-  } 
+    drawErrorScreen(1);
+  } else if (numberOfSatellites < 4 && state->currentScreen != ERROR_SCREEN) {
+    state->currentScreen = ERROR_SCREEN;
+    drawErrorScreen(2);
+  }
 }
 
 void initDisplay(DisplayScreens defaultScreen) {
@@ -677,8 +691,6 @@ void initDisplay(DisplayScreens defaultScreen) {
     case SONAR_SCREEN:
       drawMainScreenSonar();
       displayState->currentScreen = SONAR_SCREEN;
-      selectMainScreenGps(currentGpsSelection);
-      currentGpsSelection->nextPos = 2;
       break;
 
     default:
